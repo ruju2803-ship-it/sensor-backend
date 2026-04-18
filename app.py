@@ -91,55 +91,118 @@ def update_parameters():
 def get_parameters():
     return jsonify({"parameters": parameters})
 
+
+POINTS = 260
+
+def get_total_duration(range_type, selected_date):
+    if range_type == "day":
+        return 1440
+    elif range_type == "week":
+        return 10080
+    elif range_type == "month":
+        next_month = selected_date.replace(day=28) + timedelta(days=4)
+        days = (next_month - timedelta(days=next_month.day)).day
+        return days * 1440
+    elif range_type == "year":
+        year = selected_date.year
+        is_leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+        return (366 if is_leap else 365) * 1440
+
+
+def get_time_position(dt, range_type):
+    minutes_of_day = dt.hour * 60 + dt.minute
+
+    if range_type == "day":
+        return minutes_of_day
+    elif range_type == "week":
+        return dt.weekday() * 1440 + minutes_of_day
+    elif range_type == "month":
+        return (dt.day - 1) * 1440 + minutes_of_day
+    elif range_type == "year":
+        return (dt.timetuple().tm_yday - 1) * 1440 + minutes_of_day
+
+
+def map_to_slots(data, range_type, selected_date):
+    if not data:
+        return [0] * POINTS
+
+    total_duration = get_total_duration(range_type, selected_date)
+    slots = [[] for _ in range(POINTS)]
+
+    for item in data:
+        try:
+            dt = datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
+            position = get_time_position(dt, range_type)
+
+            index = int((position / total_duration) * POINTS)
+
+            if 0 <= index < POINTS:
+                slots[index].append(item["value"])
+        except:
+            continue
+
+    result = []
+    last_value = data[0]["value"]
+
+    for bucket in slots:
+        if bucket:
+            avg = sum(bucket) / len(bucket)
+            last_value = avg
+            result.append(avg)
+        else:
+            result.append(last_value)
+
+    return result
+
 @app.route('/data', methods=['GET']) # New endpoint for historical data
-def get_data(): # New function to handle historical data requests
-    try:        # New query parameters: range (day/week/month/year) and date (YYYY-MM-DD)
-        range_type = request.args.get('range', 'day')  # Default to 'day' if not provided
-        selected_date = request.args.get('date')  # Date is required for all range types to determine the period to filter
+@app.route('/data', methods=['GET'])
+def get_data():
+    try:
+        range_type = request.args.get('range', 'day')
+        selected_date = request.args.get('date')
 
-        if not selected_date:     # Date is required to filter data, even for 'day' range type, to know which day to filter
-            return jsonify({"error": "Date required"}), 400 # Validate range_type
+        if not selected_date:
+            return jsonify({"error": "Date required"}), 400
 
-        selected_date = datetime.strptime(selected_date, "%Y-%m-%d")  # Convert string to datetime object for comparison
+        selected_date = datetime.strptime(selected_date, "%Y-%m-%d")
 
-        filtered_rows = []  # List to hold rows that match the selected date range
+        filtered_rows = []
 
-        with open(CSV_FILE, mode='r') as file:  # Read the CSV file and filter rows based on the selected date range
-            reader = csv.DictReader(file)  # Use DictReader to access columns by name
+        with open(CSV_FILE, mode='r') as file:
+            reader = csv.DictReader(file)
 
-            for row in reader:       # Try to parse the timestamp and filter rows based on the selected date and range type
-                try:                 # If timestamp is missing or in wrong format, skip the row
-                    row_time = datetime.strptime(      # Parse the timestamp from the row for comparison
-                        row["Timestamp"], "%Y-%m-%d %H:%M:%S"  # Assuming the timestamp is in this format, adjust if different
-                    ) 
+            for row in reader:
+                try:
+                    row_time = datetime.strptime(
+                        row["Timestamp"], "%Y-%m-%d %H:%M:%S"
+                    )
 
-                    # 🔥 FILTER LOGIC
-                    if range_type == "day":   # For 'day' range type, we want to include rows that match the selected date (ignoring time)
-                        if row_time.date() == selected_date.date():  # Compare only the date part of the timestamp with the selected date
-                            filtered_rows.append(row)# For 'week' range type, we want to include rows that fall within the week of the selected date (Monday to Sunday)
-
-                    elif range_type == "week":# Calculate the start and end of the week based on the selected date (Monday to Sunday)
-                        start = selected_date - timedelta(days=selected_date.weekday())# Start of the week (Monday)
-                        end = start + timedelta(days=6)# End of the week (Sunday)
-
-                        if start.date() <= row_time.date() <= end.date():# Check if the row's date falls within the start and end of the week
-                            filtered_rows.append(row)#
-
-                    elif range_type == "month": # For 'month' range type, we want to include rows that match the month and year of the selected date
-                        if ( # Check if the row's year and month match the selected date's year and month
-                            row_time.year == selected_date.year and
-                            row_time.month == selected_date.month
-                        ):# If the row's timestamp falls within the selected month and year, include it in the filtered rows
+                    if range_type == "day":
+                        if row_time.date() == selected_date.date():
                             filtered_rows.append(row)
 
-                    elif range_type == "year": # For 'year' range type, we want to include rows that match the year of the selected date
-                        if row_time.year == selected_date.year:# Check if the row's year matches the selected date's year
-                            filtered_rows.append(row)# If the range_type is not recognized, return an error response
+                    elif range_type == "week":
+                        start = selected_date - timedelta(days=selected_date.weekday())
+                        end = start + timedelta(days=6)
 
-                except: # If there was an error parsing the timestamp, skip this row and
-                    continue # If there was an error parsing the timestamp, skip this row and continue with the next one
+                        if start.date() <= row_time.date() <= end.date():
+                            filtered_rows.append(row)
 
-        # 🔥 IMPORTANT: include time + value
+                    elif range_type == "month":
+                        if (
+                            row_time.year == selected_date.year and
+                            row_time.month == selected_date.month
+                        ):
+                            filtered_rows.append(row)
+
+                    elif range_type == "year":
+                        if row_time.year == selected_date.year:
+                            filtered_rows.append(row)
+
+                except:
+                    continue
+
+        # 🔥 extract function (same)
         def extract_with_time(field):
             result = []
             for r in filtered_rows:
@@ -152,14 +215,21 @@ def get_data(): # New function to handle historical data requests
                     continue
             return result
 
-        # 🔥 FINAL RESPONSE
+        # ✅ NOW PROPERLY INSIDE FUNCTION
+        temp_raw = extract_with_time("Temperature (°C)")
+        hum_raw = extract_with_time("Humidity (%)")
+        co2_raw = extract_with_time("CO2 (PPM)")
+        pm1_raw = extract_with_time("PM 1 (µg/m³)")
+        pm2_5_raw = extract_with_time("PM 2.5 (µg/m³)")
+        pm10_raw = extract_with_time("PM 10 (µg/m³)")
+
         return jsonify({
-            "temperature": extract_with_time("Temperature (°C)"),
-            "humidity": extract_with_time("Humidity (%)"),
-            "co2": extract_with_time("CO2 (PPM)"),
-            "pm1": extract_with_time("PM 1 (µg/m³)"),
-            "pm2_5": extract_with_time("PM 2.5 (µg/m³)"),
-            "pm10": extract_with_time("PM 10 (µg/m³)")
+            "temperature": map_to_slots(temp_raw, range_type, selected_date),
+            "humidity": map_to_slots(hum_raw, range_type, selected_date),
+            "co2": map_to_slots(co2_raw, range_type, selected_date),
+            "pm1": map_to_slots(pm1_raw, range_type, selected_date),
+            "pm2_5": map_to_slots(pm2_5_raw, range_type, selected_date),
+            "pm10": map_to_slots(pm10_raw, range_type, selected_date)
         })
 
     except Exception as e:
