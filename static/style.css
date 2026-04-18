@@ -1,0 +1,104 @@
+/*  Base styles for the entire page */
+body {
+    font-family: Arial, sans-serif;       /* Clean, readable font */
+    margin: 0;                            /* Remove default browser margin */
+    padding: 20px 20px 20px 300px;        /* Top Right Bottom Left - more padding on left */
+    /* background-color: #05f1de;            Light gray background for contrast */
+     background: linear-gradient(to right, #fad4f4, #faa99e);
+}
+
+.version-top-right {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #020202;
+    background-color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/*  Container to center content and limit width */
+.container {
+    max-width: 1200px;                    /* Prevent content from stretching too wide */
+    margin: 0 auto 0 100px;               /* Top Right Bottom Left - more margin on left */
+} 
+
+/*  Main heading styles */
+h1 {
+    text-align: left;                     /* Changed from center to left */
+    color: #1a1a1a;                       /* Dark text for visibility */
+    margin-left: 40px;                    /* Match row padding */
+    margin-bottom: 10px;                  /* Space below heading */
+}
+
+/*  Subtitle under the main heading */
+.subtitle {
+    text-align: left;                     /* Changed from center to left */
+    color: #131212;                          /* Medium gray for softer tone */
+    margin-left: 40px;                    /* Match row padding */
+    margin-top: 0;                        /* Remove space above */
+    margin-bottom: 30px;                  /* Space below subtitle */
+}
+
+/*  Row layout for parameter boxes */
+.row {
+    display: flex;                        /* Arrange boxes in a row */
+    justify-content: flex-start;          /* Changed from center to flex-start */
+    gap: 20px;                            /* Space between boxes */
+    margin-bottom: 20px;                  /* Space below each row */
+    padding-left: 40px;                   /* Additional left padding for rows */
+}
+
+/*  Individual parameter box styling */
+.box {
+    background: rgb(254, 255, 195);                    /* White background */
+    border-radius: 10px;                  /* Rounded corners */
+    border: 2px solid #757272;            /* Black border with 2px width */
+    padding: 20px;                        /* Inner spacing */
+    text-align: center;                   /* Center content */
+    min-width: 200px;                     /* Minimum width */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);/* Subtle shadow */
+}
+
+/*  Parameter name styling */
+.param-name {
+    color: #050505;                          /* Medium gray text */
+    margin: 0 0 10px 0;                   /* Space below name */
+    font-size: 2em ;            /* !imortant Force larger font size */
+    font-weight: normal;                    /* Make text bold */
+}
+
+/*  Wrapper for value and unit */
+.param-value-unit {
+    margin: 10px 0;                       /* Vertical spacing around value/unit */
+}
+
+/*  Sensor value styling */
+.value {
+    font-size: 3.5em;                       /* Large font for visibility */
+    font-weight: bold;                    /* Make it stand out */
+    color: #6a52f3;                       /* Dark red text for contrast */
+}
+
+/*  Unit styling (e.g., °C, %, PPM) */
+.unit {
+    font-size: 2em;                       /* Normal size */
+    color: #fd0b0b;                          /* Medium gray */
+    margin-left: 10px;                     /* Space between value and unit */
+     font-weight: bold;
+}
+
+/*  Timestamp styling */
+.timestamp {
+    font-size: 0.8em;                     /* Smaller font */
+    color: #999;                          /* Light gray for subtlety */
+    margin: 5px 0 0 0;                    /* Space above timestamp */
+}
+
+/*  Extra spacing below sections */
+.bottom-space {
+    margin-bottom: 500px;                  /* Adds breathing room below elements */
+}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Parameter Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <script>
+        function updateValues() {
+            fetch('/parameters')
+                .then(response => response.json())
+                .then(data => {
+                    data.parameters.forEach((param, index) => {
+                        document.getElementById(`value-${index}`).textContent = param.value;
+                        document.getElementById(`updated-${index}`).textContent =
+                            param.last_updated ? `Last updated: ${param.last_updated}` : '';
+                    });
+                })
+                .catch(err => console.error('Error fetching parameters:', err));
+        }
+
+        setInterval(updateValues, 1000);
+        window.onload = updateValues;
+    </script>
+</head>
+<body>
+     <!-- Static version label in top-right corner -->
+    <div class="version-top-right">Version: V1.0</div>
+
+    <div class="container">
+        <h1>Environmental Parameters</h1>
+        <p class="subtitle">Real-time Sensor Data</p>
+
+        <!-- First row: Temperature, Humidity, and CO2 -->
+        <div class="row">
+            {% for param in parameters[:3] %}
+            <div class="box {% if loop.index0 < 3 %}active{% endif %}">
+                <p class="param-name"><strong>{{ param.name }}</strong></p>
+                <p class="param-value-unit">
+                    <span class="value" id="value-{{ loop.index0 }}">{{ param.value }}</span>
+                    <span class="unit">{{ param.unit }}</span>
+                </p>
+                <p class="timestamp" id="updated-{{ loop.index0 }}">
+                    {% if param.last_updated %}
+                        Last updated: {{ param.last_updated }}
+                    {% endif %}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Second row: PM values -->
+        <div class="row bottom-space">
+            {% for param in parameters[3:] %}
+            <div class="box">
+                <p class="param-name"><strong>{{ param.name }}</strong></p>
+                <p class="param-value-unit">
+                    <span class="value" id="value-{{ loop.index0 + 3 }}">{{ param.value }}</span>
+                    <span class="unit">{{ param.unit }}</span>
+                </p>
+                <p class="timestamp" id="updated-{{ loop.index0 + 3 }}">
+                    {% if param.last_updated %}
+                        Last updated: {{ param.last_updated }}
+                    {% endif %}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
