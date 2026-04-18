@@ -21,7 +21,7 @@ parameters = [
 
 # Create CSV file with headers if not exists
 if not os.path.exists(CSV_FILE):
-    with open(CSV_FILE, mode='w', newline='') as file:
+    with open(CSV_FILE, mode='w', newline='', encoding='latin-1') as file:
         writer = csv.writer(file)
         writer.writerow([
             "Serial No.", "Timestamp",
@@ -62,10 +62,10 @@ def update_parameters():
 
         serial_no = 1
         if os.path.exists(CSV_FILE):
-            with open(CSV_FILE, mode='r') as file:
+            with open(CSV_FILE, mode='r', encoding='latin-1') as file:
                 serial_no = sum(1 for row in file)
 
-        with open(CSV_FILE, mode='a', newline='') as file:
+        with open(CSV_FILE, mode='a', newline='', encoding='latin-1') as file:
             writer = csv.writer(file)
             writer.writerow([
                 serial_no,
@@ -168,7 +168,7 @@ def get_data():
 
         filtered_rows = []
 
-        with open(CSV_FILE, mode='r') as file:
+        with open(CSV_FILE, mode='r', encoding='latin-1') as file:
             reader = csv.DictReader(file)
 
             for row in reader:
@@ -239,7 +239,7 @@ def get_data():
 def view_log():
     log_data = []
     try:
-        with open(CSV_FILE, mode='r') as file:
+        with open(CSV_FILE, mode='r', encoding='latin-1') as file:
             reader = csv.reader(file)
             headers = next(reader)
             for row in reader:
