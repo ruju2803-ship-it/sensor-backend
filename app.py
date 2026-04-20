@@ -126,9 +126,13 @@ def map_to_slots(data, range_type, selected_date):
     if not data:
         return [0] * POINTS
 
+    # ✅ IMPORTANT: sort data by time
+    data.sort(key=lambda x: x["time"])
+
     total_duration = get_total_duration(range_type, selected_date)
     slots = [[] for _ in range(POINTS)]
 
+    # 🔹 Fill slots
     for item in data:
         try:
             dt = datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
@@ -141,21 +145,27 @@ def map_to_slots(data, range_type, selected_date):
         except:
             continue
 
+    # 🔹 Build result (NO AVERAGE)
     result = []
     last_value = data[0]["value"]
 
     for bucket in slots:
         if bucket:
-            avg = sum(bucket) / len(bucket)
-            last_value = avg
-            result.append(avg)
+            # ✅ pick 4th value if available
+            if len(bucket) >= 4:
+                value = bucket[3]
+            else:
+                value = bucket[-1]  # fallback
+
+            last_value = value
+            result.append(value)
         else:
+            # empty slot → carry previous value
             result.append(last_value)
 
     return result
 
 @app.route('/data', methods=['GET']) # New endpoint for historical data
-@app.route('/data', methods=['GET'])
 def get_data():
     try:
         range_type = request.args.get('range', 'day')
