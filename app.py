@@ -94,73 +94,42 @@ def get_parameters():
 
 POINTS = 260
 
-def get_total_duration(range_type, selected_date):
+def get_step(range_type):
     if range_type == "day":
-        return 1440
+        return 5
     elif range_type == "week":
-        return 10080
+        return 38
     elif range_type == "month":
-        next_month = selected_date.replace(day=28) + timedelta(days=4)
-        days = (next_month - timedelta(days=next_month.day)).day
-        return days * 1440
+        return 166
     elif range_type == "year":
-        year = selected_date.year
-        is_leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
-        return (366 if is_leap else 365) * 1440
-
-
-def get_time_position(dt, range_type):
-    minutes_of_day = dt.hour * 60 + dt.minute
-
-    if range_type == "day":
-        return minutes_of_day
-    elif range_type == "week":
-        return dt.weekday() * 1440 + minutes_of_day
-    elif range_type == "month":
-        return (dt.day - 1) * 1440 + minutes_of_day
-    elif range_type == "year":
-        return (dt.timetuple().tm_yday - 1) * 1440 + minutes_of_day
+        return 2021
 
 
 def map_to_slots(data, range_type, selected_date):
     if not data:
         return [0] * POINTS
 
-    # ✅ IMPORTANT: sort data by time
+    #  sort by time
     data.sort(key=lambda x: x["time"])
 
-    total_duration = get_total_duration(range_type, selected_date)
-    slots = [[] for _ in range(POINTS)]
+    step = get_step(range_type)
 
-    # 🔹 Fill slots
-    for item in data:
+    result = []
+
+    # 🔹 pick every Nth value
+    for i in range(0, len(data), step):
         try:
-            dt = datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
-            position = get_time_position(dt, range_type)
-
-            index = int((position / total_duration) * POINTS)
-
-            if 0 <= index < POINTS:
-                slots[index].append(item["value"])
+            result.append(data[i]["value"])
         except:
             continue
 
-    # 🔹 Build result (NO AVERAGE)
-    result = []
-    last_value = data[0]["value"]
-
-    for bucket in slots:
-        if bucket:
-            # ✅ pick 4th value if available
-            if len(bucket) >= 4:
-                value = bucket[3]
-            else:
-                value = bucket[-1]  # fallback
-
-            last_value = value
-            result.append(value)
-        else:
-            # empty slot → carry previous value
+    # 🔹 ensure exactly 260 points
+    if len(result) >= POINTS:
+        return result[:POINTS]
+    else:
+        # fill remaining with last value
+        last_value = result[-1] if result else 0
+        while len(result) < POINTS:
             result.append(last_value)
 
     return result
