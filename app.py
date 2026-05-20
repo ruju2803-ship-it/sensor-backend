@@ -96,12 +96,16 @@ POINTS = 260
 
 
 def get_step(range_type):
+
     if range_type == "day":
         return 5
+
     elif range_type == "week":
         return 38
+
     elif range_type == "month":
         return 166
+
     elif range_type == "year":
         return 2021
 
@@ -109,11 +113,13 @@ def get_step(range_type):
 
 
 def parse_time(t):
+
     try:
         return datetime.strptime(
             t,
             "%Y-%m-%d %H:%M:%S"
         )
+
     except:
         return datetime.strptime(
             t,
@@ -125,7 +131,9 @@ def map_to_slots(data, range_type, selected_date):
 
     slots = []
 
+    # =========================
     # DAY
+    # =========================
     if range_type == "day":
 
         for i in range(POINTS):
@@ -134,7 +142,7 @@ def map_to_slots(data, range_type, selected_date):
 
             slots.append({
                 "time": hour,
-                "value": 0
+                "value": None
             })
 
         for point in data:
@@ -152,25 +160,29 @@ def map_to_slots(data, range_type, selected_date):
                 )
 
                 if 0 <= index < POINTS:
+
                     slots[index] = {
                         "time": point["time"],
                         "value": point["value"]
                     }
 
-            except:
+            except Exception as e:
+                print("DAY ERROR:", e)
                 continue
 
+    # =========================
     # WEEK
+    # =========================
     elif range_type == "week":
 
         slots = [
-            {"time": "Mon", "value": 0},
-            {"time": "Tue", "value": 0},
-            {"time": "Wed", "value": 0},
-            {"time": "Thu", "value": 0},
-            {"time": "Fri", "value": 0},
-            {"time": "Sat", "value": 0},
-            {"time": "Sun", "value": 0},
+            {"time": "Mon", "value": None},
+            {"time": "Tue", "value": None},
+            {"time": "Wed", "value": None},
+            {"time": "Thu", "value": None},
+            {"time": "Fri", "value": None},
+            {"time": "Sat", "value": None},
+            {"time": "Sun", "value": None},
         ]
 
         for point in data:
@@ -185,17 +197,20 @@ def map_to_slots(data, range_type, selected_date):
                     "value": point["value"]
                 }
 
-            except:
+            except Exception as e:
+                print("WEEK ERROR:", e)
                 continue
 
+    # =========================
     # MONTH
+    # =========================
     elif range_type == "month":
 
         slots = [
-            {"time": "W1", "value": 0},
-            {"time": "W2", "value": 0},
-            {"time": "W3", "value": 0},
-            {"time": "W4", "value": 0},
+            {"time": "W1", "value": None},
+            {"time": "W2", "value": None},
+            {"time": "W3", "value": None},
+            {"time": "W4", "value": None},
         ]
 
         for point in data:
@@ -213,19 +228,20 @@ def map_to_slots(data, range_type, selected_date):
                     "value": point["value"]
                 }
 
-            except:
+            except Exception as e:
+                print("MONTH ERROR:", e)
                 continue
 
+    # =========================
     # YEAR
+    # =========================
     elif range_type == "year":
-
-        slots = []
 
         for i in range(12):
 
             slots.append({
                 "time": i,
-                "value": 0
+                "value": None
             })
 
         for point in data:
@@ -240,11 +256,27 @@ def map_to_slots(data, range_type, selected_date):
                     "value": point["value"]
                 }
 
-            except:
+            except Exception as e:
+                print("YEAR ERROR:", e)
                 continue
 
-    return slots
+    # =========================
+    # FORWARD FILL
+    # =========================
 
+    last_value = 0
+
+    for i in range(len(slots)):
+
+        if slots[i]["value"] is None:
+
+            slots[i]["value"] = last_value
+
+        else:
+
+            last_value = slots[i]["value"]
+
+    return slots
 @app.route('/data', methods=['GET'])
 def get_data():
     try:
