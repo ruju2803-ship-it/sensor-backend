@@ -94,6 +94,7 @@ def get_parameters():
 
 POINTS = 260
 
+
 def get_step(range_type):
     if range_type == "day":
         return 5
@@ -104,37 +105,147 @@ def get_step(range_type):
     elif range_type == "year":
         return 2021
 
+    return 1
+
+
+def parse_time(t):
+    try:
+        return datetime.strptime(
+            t,
+            "%Y-%m-%d %H:%M:%S"
+        )
+    except:
+        return datetime.strptime(
+            t,
+            "%d-%m-%Y %H:%M"
+        )
+
 
 def map_to_slots(data, range_type, selected_date):
-    if not data:
-        return [0] * POINTS
 
-    #  sort by time
-    data.sort(key=lambda x: x["time"])
+    slots = []
 
-    step = get_step(range_type)
+    # DAY
+    if range_type == "day":
 
-    result = []
+        for i in range(POINTS):
 
-    # 🔹 pick every Nth value
-    for i in range(0, len(data), step):
-        try:
-            result.append(data[i]["value"])
-        except:
-            continue
+            hour = (24 / POINTS) * i
 
-    # 🔹 ensure exactly 260 points
-    if len(result) >= POINTS:
-        return result[:POINTS]
-    else:
-        # fill remaining with last value
-        last_value = result[-1] if result else 0
-        while len(result) < POINTS:
-            result.append(last_value)
+            slots.append({
+                "time": hour,
+                "value": 0
+            })
 
-    return result
+        for point in data:
 
-@app.route('/data', methods=['GET']) # New endpoint for historical data
+            try:
+                dt = parse_time(point["time"])
+
+                minutes = (
+                    dt.hour * 60 +
+                    dt.minute
+                )
+
+                index = int(
+                    (minutes / 1440) * POINTS
+                )
+
+                if 0 <= index < POINTS:
+                    slots[index] = {
+                        "time": point["time"],
+                        "value": point["value"]
+                    }
+
+            except:
+                continue
+
+    # WEEK
+    elif range_type == "week":
+
+        slots = [
+            {"time": "Mon", "value": 0},
+            {"time": "Tue", "value": 0},
+            {"time": "Wed", "value": 0},
+            {"time": "Thu", "value": 0},
+            {"time": "Fri", "value": 0},
+            {"time": "Sat", "value": 0},
+            {"time": "Sun", "value": 0},
+        ]
+
+        for point in data:
+
+            try:
+                dt = parse_time(point["time"])
+
+                day = dt.weekday()
+
+                slots[day] = {
+                    "time": point["time"],
+                    "value": point["value"]
+                }
+
+            except:
+                continue
+
+    # MONTH
+    elif range_type == "month":
+
+        slots = [
+            {"time": "W1", "value": 0},
+            {"time": "W2", "value": 0},
+            {"time": "W3", "value": 0},
+            {"time": "W4", "value": 0},
+        ]
+
+        for point in data:
+
+            try:
+                dt = parse_time(point["time"])
+
+                week = min(
+                    3,
+                    (dt.day - 1) // 7
+                )
+
+                slots[week] = {
+                    "time": point["time"],
+                    "value": point["value"]
+                }
+
+            except:
+                continue
+
+    # YEAR
+    elif range_type == "year":
+
+        slots = []
+
+        for i in range(12):
+
+            slots.append({
+                "time": i,
+                "value": 0
+            })
+
+        for point in data:
+
+            try:
+                dt = parse_time(point["time"])
+
+                month = dt.month - 1
+
+                slots[month] = {
+                    "time": point["time"],
+                    "value": point["value"]
+                }
+
+            except:
+                continue
+
+    return slots
+
+@app.route('/data', methods=['GET'])
 def get_data():
     try:
         range_type = request.args.get('range', 'day')
@@ -143,6 +254,7 @@ def get_data():
         if not selected_date:
             return jsonify({"error": "Date required"}), 400
 
+        # Frontend sends: 2026-05-20
         selected_date = datetime.strptime(selected_date, "%Y-%m-%d")
 
         filtered_rows = []
@@ -152,14 +264,24 @@ def get_data():
 
             for row in reader:
                 try:
-                    row_time = datetime.strptime(
-                        row["Timestamp"], "%Y-%m-%d %H:%M:%S"
-                    )
+                    # Support BOTH timestamp formats
+                    try:
+                        row_time = datetime.strptime(
+                            row["Timestamp"],
+                            "%Y-%m-%d %H:%M:%S"
+                        )
+                    except:
+                        row_time = datetime.strptime(
+                            row["Timestamp"],
+                            "%d-%m-%Y %H:%M"
+                        )
 
+                    # DAY FILTER
                     if range_type == "day":
                         if row_time.date() == selected_date.date():
                             filtered_rows.append(row)
 
+                    # WEEK FILTER
                     elif range_type == "week":
                         start = selected_date - timedelta(days=selected_date.weekday())
                         end = start + timedelta(days=6)
@@ -167,6 +289,7 @@ def get_data():
                         if start.date() <= row_time.date() <= end.date():
                             filtered_rows.append(row)
 
+                    # MONTH FILTER
                     elif range_type == "month":
                         if (
                             row_time.year == selected_date.year and
@@ -174,27 +297,33 @@ def get_data():
                         ):
                             filtered_rows.append(row)
 
+                    # YEAR FILTER
                     elif range_type == "year":
                         if row_time.year == selected_date.year:
                             filtered_rows.append(row)
 
-                except:
+                except Exception as e:
+                    print("Row parse error:", row, e)
                     continue
 
-        # 🔥 extract function (same)
+        print("Matched rows:", len(filtered_rows))
+
+        # Extract sensor values
         def extract_with_time(field):
             result = []
+
             for r in filtered_rows:
                 try:
                     result.append({
                         "time": r["Timestamp"],
                         "value": float(r[field])
                     })
-                except:
+                except Exception as e:
+                    print("Value parse error:", e)
                     continue
+
             return result
 
-        # ✅ NOW PROPERLY INSIDE FUNCTION
         temp_raw = extract_with_time("Temperature (°C)")
         hum_raw = extract_with_time("Humidity (%)")
         co2_raw = extract_with_time("CO2 (PPM)")
